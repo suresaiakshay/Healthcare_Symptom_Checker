@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Healthcare Symptom Checker</title>
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: linear-gradient(135deg,#f0f4f8,#d9e2ec); min-height:100vh; display:flex; flex-direction:column; justify-content:space-between; }
+    .container { max-width:800px; margin:auto; padding:20px; display:flex; flex-direction:column; gap:40px; }
+
+    .heading-section { text-align:center; padding:40px 20px; background:#ffffffaa; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+    .heading-section h1 { font-size:2.5rem; color:#1f3c88; margin-bottom:10px; }
+    .disclaimer { font-size:0.9rem; color:#d32f2f; font-weight:600; }
+
+    .form-section { background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:20px; }
+    label { font-weight:bold; margin-bottom:6px; display:block; color:#333; }
+    textarea, input, select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccc; font-size:1rem; outline:none; transition:all 0.2s; }
+    textarea:focus, input:focus, select:focus { border-color:#1f3c88; box-shadow:0 0 8px rgba(31,60,136,0.2); }
+
+    .input-row { display:flex; gap:20px; flex-wrap:wrap; }
+    .field { flex:1; min-width:120px; }
+    button { background-color:#1f3c88; color:white; padding:12px 20px; border:none; border-radius:8px; font-size:1.1rem; cursor:pointer; transition:background 0.3s; }
+    button:hover { background-color:#162f6f; }
+
+    .result-box { background:#ffffff; padding:25px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:none; animation:fadeIn 0.5s ease-in-out forwards; }
+    .result-box h2 { margin-bottom:15px; color:#1f3c88; }
+    .disclaimer-box {
+      background:#fff8e1;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+      color: #5a4a00;
+    }
+    @keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+
+    footer { text-align:center; padding:15px; background:#1f3c88; color:white; font-size:0.9rem; }
+    @media (max-width:600px) { 
+      .input-row { flex-direction:column; } 
+      .heading-section h1 { font-size:2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Heading Section -->
+    <div class="heading-section">
+      <h1>Healthcare Symptom Checker</h1>
+      <p class="disclaimer">⚠️ This tool is for <strong>educational purposes only</strong>. Always consult a doctor for real medical concerns.</p>
+    </div>
+
+    <!-- Form Section -->
+    <div class="form-section">
+      <form id="symptom-form">
+        <label for="symptoms">Describe your symptoms:</label>
+        <textarea id="symptoms" autofocus placeholder="e.g., Fever, sore throat, cough for 2 days" required></textarea>
+
+        <div class="input-row">
+          <div class="field">
+            <label for="age">Age:</label>
+            <input type="number" id="age" min="0" max="120" placeholder="20" required />
+          </div>
+          <div class="field">
+            <label for="sex">Sex:</label>
+            <select id="sex" required>
+              <option value="">-- Select --</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit">Check Symptoms</button>
+      </form>
+    </div>
+
+    <!-- Result Section -->
+    <div id="result-box" class="result-box">
+      <h2>Analysis Result</h2>
+      <div id="result-content">Your results will appear here.</div>
+    </div>
+  </div>
+
+  <footer>© 2025 Healthcare Symptom Checker | Educational Demo Only</footer>
+
+  <script>
+    const form = document.getElementById('symptom-form');
+    const resultBox = document.getElementById('result-box');
+    const resultContent = document.getElementById('result-content');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const symptoms = document.getElementById('symptoms').value.trim();
+      const age = document.getElementById('age').value;
+      const sex = document.getElementById('sex').value;
+
+      // Show loading
+      resultBox.style.display = 'block';
+      resultContent.innerHTML = '<p>Processing your symptoms... Please wait.</p>';
+
+      try {
+        const response = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symptoms, age, sex })
+        });
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          throw new Error("Invalid server response.");
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || "An unknown error occurred.");
+        }
+
+        // Display result with embedded disclaimer
+        resultContent.innerHTML = `
+          <div class="disclaimer-box">
+            ⚠️ <strong>Important:</strong> This is not a medical diagnosis. Always consult a licensed healthcare provider.
+          </div>
+          <p><strong>Symptoms:</strong> ${symptoms}</p>
+          <p><strong>Age:</strong> ${age}</p>
+          <p><strong>Sex:</strong> ${sex}</p>
+          <p><strong>Probable Conditions & Advice:</strong></p>
+          <p>${data.conditions.replace(/\n/g, '<br>')}</p>
+          <p><strong>Next Steps:</strong> ${data.next_steps}</p>
+        `;
+
+      } catch (err) {
+        console.error("Fetch error:", err);
+        resultContent.innerHTML = `
+          <div class="disclaimer-box" style="border-left-color:#d32f2f; background:#ffebee; color:#c62828;">
+            ❌ <strong>Error:</strong> ${err.message || "Failed to get results. Please try again."}
+          </div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
